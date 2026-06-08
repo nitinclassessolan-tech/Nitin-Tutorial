@@ -1,0 +1,250 @@
+/* Auth Pages */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green-50);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 420px;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: 32px 24px;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.auth-container-register {
+  max-width: 480px;
+}
+
+/* Header */
+.auth-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.5rem;
+  margin: 0 auto 16px;
+  box-shadow: var(--shadow-green);
+}
+
+.auth-header h1 {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.auth-header p {
+  color: var(--gray-500);
+  font-size: 0.875rem;
+}
+
+/* Form */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-step {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.form-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* Input with icon */
+.input-icon-wrapper {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-400);
+  font-size: 1.125rem;
+  pointer-events: none;
+}
+
+.input-with-icon {
+  padding-left: 42px !important;
+}
+
+.input-icon-right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 1.125rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.input-icon-right:hover {
+  color: var(--gray-600);
+}
+
+/* Step Indicator */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 8px;
+  position: relative;
+  padding: 0 40px;
+}
+
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: var(--gray-200);
+  color: var(--gray-500);
+  position: relative;
+  z-index: 2;
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.step-dot:nth-child(2) {
+  margin: 0 auto;
+}
+
+.step-dot.active {
+  background: var(--green-600);
+  color: var(--white);
+}
+
+.step-dot.current {
+  background: var(--green-600);
+  color: var(--white);
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
+}
+
+.step-line {
+  position: absolute;
+  top: 50%;
+  left: 56px;
+  right: 56px;
+  height: 3px;
+  background: var(--gray-200);
+  z-index: 1;
+  border-radius: var(--radius-full);
+}
+
+.step-line-fill {
+  height: 100%;
+  background: var(--green-600);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+.step-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 20px;
+}
+
+.step-labels span {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.step-labels span.active {
+  color: var(--green-700);
+}
+
+/* Footer */
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.875rem;
+  color: var(--gray-500);
+}
+
+.auth-footer a {
+  color: var(--green-600);
+  font-weight: 600;
+}
+
+/* Btn loading */
+.btn-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Decoration */
+.auth-decoration {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.auth-circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.08;
+}
+
+.auth-circle-1 {
+  width: 300px;
+  height: 300px;
+  background: var(--green-500);
+  top: -100px;
+  right: -80px;
+}
+
+.auth-circle-2 {
+  width: 200px;
+  height: 200px;
+  background: var(--green-400);
+  bottom: -60px;
+  left: -60px;
+}
+
+.auth-circle-3 {
+  width: 120px;
+  height: 120px;
+  background: var(--green-600);
+  top: 40%;
+  left: 10%;
+}

@@ -1,0 +1,43 @@
+.dashboard-header {
+  padding-bottom: 40px !important;
+}
+
+.dashboard-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mobile-logout {
+  background: rgba(255,255,255,0.15);
+  color: var(--white);
+  border-radius: var(--radius-md);
+}
+
+.mobile-logout:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+@media (min-width: 768px) {
+  .mobile-logout {
+    display: none;
+  }
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.quick-actions .list-card {
+  cursor: pointer;
+}
