@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, where, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd, HiOutlinePencil, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd, HiOutlinePencil, HiOutlineCheck, HiOutlineX, HiOutlineSearch } from 'react-icons/hi';
 
 export default function CourseForm() {
   const [courses, setCourses] = useState([]);
@@ -16,6 +16,7 @@ export default function CourseForm() {
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [saving, setSaving] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
 
   useEffect(() => {
     loadData();
@@ -242,18 +243,33 @@ export default function CourseForm() {
 
                 {/* Enroll form */}
                 {showEnroll === course.id && (
-                  <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                    <select className="form-input" style={{ flex: 1, padding: '8px 12px', fontSize: '0.875rem' }} value={enrollStudentId} onChange={(e) => setEnrollStudentId(e.target.value)}>
-                      <option value="">Select student</option>
-                      {students
-                        .filter((s) => !(s.courseIds || []).includes(course.id))
-                        .map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                    </select>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => handleEnroll(course.id)}>
-                      Enroll
-                    </button>
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <HiOutlineSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)', fontSize: '0.875rem' }} />
+                      <input
+                        type="text" placeholder="Search student..."
+                        value={courseSearch} onChange={(e) => setCourseSearch(e.target.value)}
+                        style={{
+                          width: '100%', padding: '8px 10px 8px 32px', fontSize: '0.8125rem',
+                          border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-md)',
+                          background: 'var(--white)', outline: 'none',
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select className="form-input" style={{ flex: 1, padding: '8px 12px', fontSize: '0.875rem' }} value={enrollStudentId} onChange={(e) => setEnrollStudentId(e.target.value)}>
+                        <option value="">Select student</option>
+                        {students
+                          .filter((s) => !(s.courseIds || []).includes(course.id))
+                          .filter((s) => !courseSearch || s.name?.toLowerCase().includes(courseSearch.toLowerCase()) || s.email?.toLowerCase().includes(courseSearch.toLowerCase()))
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                      </select>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={() => handleEnroll(course.id)}>
+                        Enroll
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

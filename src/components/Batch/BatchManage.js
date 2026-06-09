@@ -3,7 +3,7 @@ import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, where, s
 import { db } from '../../config/firebase';
 import { getInitials } from '../../utils/helpers';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd, HiOutlineX, HiOutlineCheck, HiOutlinePencil } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd, HiOutlineX, HiOutlineCheck, HiOutlinePencil, HiOutlineSearch } from 'react-icons/hi';
 
 export default function BatchManage() {
   const [batches, setBatches] = useState([]);
@@ -15,9 +15,10 @@ export default function BatchManage() {
   const [selectedToAdd, setSelectedToAdd] = useState({});
   const [selectedToRemove, setSelectedToRemove] = useState({});
   const [saving, setSaving] = useState(false);
-  const [editBatch, setEditBatch] = useState(null); // batchId being edited
+  const [editBatch, setEditBatch] = useState(null);
   const [editName, setEditName] = useState('');
   const [editTiming, setEditTiming] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadData();
@@ -111,6 +112,7 @@ export default function BatchManage() {
     setManageBatch(batchId);
     setSelectedToAdd({});
     setSelectedToRemove({});
+    setSearchQuery('');
   }
 
   function toggleAdd(studentId) {
@@ -214,6 +216,9 @@ export default function BatchManage() {
             const assigned = students.filter((s) => (s.batchIds || []).includes(batch.id));
             const unassigned = students.filter((s) => !(s.batchIds || []).includes(batch.id));
             const isManaging = manageBatch === batch.id;
+            const q = searchQuery.toLowerCase();
+            const filteredAssigned = q ? assigned.filter((s) => s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q)) : assigned;
+            const filteredUnassigned = q ? unassigned.filter((s) => s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q)) : unassigned;
             const addCount = Object.values(selectedToAdd).filter(Boolean).length;
             const removeCount = Object.values(selectedToRemove).filter(Boolean).length;
 
@@ -284,8 +289,22 @@ export default function BatchManage() {
                 ) : (
                   // Full management UI
                   <div style={{ marginTop: 4 }}>
+                    {/* Search */}
+                    <div style={{ position: 'relative', marginBottom: 12 }}>
+                      <HiOutlineSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)', fontSize: '0.875rem' }} />
+                      <input
+                        type="text" placeholder="Search students..."
+                        value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%', padding: '8px 10px 8px 32px', fontSize: '0.8125rem',
+                          border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-md)',
+                          background: 'var(--white)', outline: 'none',
+                        }}
+                      />
+                    </div>
+
                     {/* Remove section */}
-                    {assigned.length > 0 && (
+                    {filteredAssigned.length > 0 && (
                       <div style={{ marginBottom: 16 }}>
                         <div style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -298,13 +317,13 @@ export default function BatchManage() {
                             type="button"
                             className="btn btn-sm btn-secondary"
                             style={{ fontSize: '0.6875rem', padding: '2px 8px' }}
-                            onClick={() => selectAllToRemove(assigned)}
+                            onClick={() => selectAllToRemove(filteredAssigned)}
                           >
-                            {assigned.every((s) => selectedToRemove[s.id]) ? 'Deselect All' : 'Select All'}
+                            {filteredAssigned.every((s) => selectedToRemove[s.id]) ? 'Deselect All' : 'Select All'}
                           </button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {assigned.map((s) => (
+                          {filteredAssigned.map((s) => (
                             <div
                               key={s.id}
                               onClick={() => toggleRemove(s.id)}
@@ -339,7 +358,7 @@ export default function BatchManage() {
                     )}
 
                     {/* Add section */}
-                    {unassigned.length > 0 && (
+                    {filteredUnassigned.length > 0 && (
                       <div>
                         <div style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -352,13 +371,13 @@ export default function BatchManage() {
                             type="button"
                             className="btn btn-sm btn-secondary"
                             style={{ fontSize: '0.6875rem', padding: '2px 8px' }}
-                            onClick={() => selectAllToAdd(unassigned)}
+                            onClick={() => selectAllToAdd(filteredUnassigned)}
                           >
-                            {unassigned.every((s) => selectedToAdd[s.id]) ? 'Deselect All' : 'Select All'}
+                            {filteredUnassigned.every((s) => selectedToAdd[s.id]) ? 'Deselect All' : 'Select All'}
                           </button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {unassigned.map((s) => (
+                          {filteredUnassigned.map((s) => (
                             <div
                               key={s.id}
                               onClick={() => toggleAdd(s.id)}
