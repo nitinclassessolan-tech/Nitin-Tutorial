@@ -23,7 +23,7 @@ export default function Dashboard() {
     totalAttendanceRecords: 0,
     pendingFees: 0,
     recentTests: [],
-    batchNames: [],
+    batchInfo: [],
     courseNames: [],
   });
   const [loading, setLoading] = useState(true);
@@ -82,13 +82,16 @@ export default function Dashboard() {
 
         const totalCourses = (userProfile?.courseIds || []).length;
 
-        // Fetch batch names
+        // Fetch batch info (name + timing)
         const batchIds = userProfile?.batchIds || [];
-        const batchNames = [];
+        const batchInfo = [];
         for (const bid of batchIds) {
           try {
             const bSnap = await getDoc(doc(db, 'batches', bid));
-            if (bSnap.exists()) batchNames.push(bSnap.data().name);
+            if (bSnap.exists()) {
+              const d = bSnap.data();
+              batchInfo.push({ name: d.name, timing: d.timing || '' });
+            }
           } catch (e) { /* skip */ }
         }
 
@@ -110,7 +113,7 @@ export default function Dashboard() {
           totalAttendanceRecords: 0,
           pendingFees: feesSnap.size,
           recentTests,
-          batchNames,
+          batchInfo,
           courseNames,
         });
       }
@@ -157,15 +160,15 @@ export default function Dashboard() {
                 {isTeacher ? 'Welcome, Teacher' : 'Welcome back'}
               </p>
               <h1>{userProfile?.name || 'User'}</h1>
-              {!isTeacher && (stats.batchNames.length > 0 || stats.courseNames.length > 0) && (
+              {!isTeacher && ((stats.batchInfo || []).length > 0 || stats.courseNames.length > 0) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                  {stats.batchNames.map((name, i) => (
+                  {(stats.batchInfo || []).map((b, i) => (
                     <span key={'b' + i} style={{
                       fontSize: '0.6875rem', padding: '2px 8px', borderRadius: 20,
                       background: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.9)',
                       fontWeight: 500, letterSpacing: '0.2px',
                     }}>
-                      📦 {name}
+                      📦 {b.name}{b.timing ? ` • ${b.timing}` : ''}
                     </span>
                   ))}
                   {stats.courseNames.map((name, i) => (

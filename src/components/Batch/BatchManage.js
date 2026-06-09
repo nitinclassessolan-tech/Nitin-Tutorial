@@ -3,7 +3,7 @@ import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, where, s
 import { db } from '../../config/firebase';
 import { getInitials } from '../../utils/helpers';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd, HiOutlineX, HiOutlineCheck } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd, HiOutlineX, HiOutlineCheck, HiOutlinePencil } from 'react-icons/hi';
 
 export default function BatchManage() {
   const [batches, setBatches] = useState([]);
@@ -11,10 +11,13 @@ export default function BatchManage() {
   const [name, setName] = useState('');
   const [timing, setTiming] = useState('');
   const [loading, setLoading] = useState(true);
-  const [manageBatch, setManageBatch] = useState(null); // batchId being managed
-  const [selectedToAdd, setSelectedToAdd] = useState({}); // studentId -> boolean
-  const [selectedToRemove, setSelectedToRemove] = useState({}); // studentId -> boolean
+  const [manageBatch, setManageBatch] = useState(null);
+  const [selectedToAdd, setSelectedToAdd] = useState({});
+  const [selectedToRemove, setSelectedToRemove] = useState({});
   const [saving, setSaving] = useState(false);
+  const [editBatch, setEditBatch] = useState(null); // batchId being edited
+  const [editName, setEditName] = useState('');
+  const [editTiming, setEditTiming] = useState('');
 
   useEffect(() => {
     loadData();
@@ -67,6 +70,36 @@ export default function BatchManage() {
       loadData();
     } catch (err) {
       toast.error('Failed to delete');
+    }
+  }
+
+  function startEdit(batch) {
+    setEditBatch(batch.id);
+    setEditName(batch.name || '');
+    setEditTiming(batch.timing || '');
+  }
+
+  function cancelEdit() {
+    setEditBatch(null);
+    setEditName('');
+    setEditTiming('');
+  }
+
+  async function saveEdit(batchId) {
+    if (!editName.trim()) { toast.error('Batch name required'); return; }
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'batches', batchId), {
+        name: editName.trim(),
+        timing: editTiming.trim(),
+      });
+      toast.success('Batch updated!');
+      setEditBatch(null);
+      loadData();
+    } catch (err) {
+      toast.error('Failed to update batch');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -188,18 +221,46 @@ export default function BatchManage() {
               <div className="card" key={batch.id} style={{ marginBottom: 12 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div>
-                    <h4>{batch.name}</h4>
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{batch.timing || 'No timing set'}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button className={`btn-icon btn-sm`} style={{ color: isManaging ? 'var(--gray-500)' : 'var(--green-600)' }} onClick={() => openManage(batch.id)} title="Manage students">
-                      {isManaging ? <HiOutlineX /> : <HiOutlineUserAdd />}
-                    </button>
-                    <button className="btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(batch.id)} title="Delete batch">
-                      <HiOutlineTrash />
-                    </button>
-                  </div>
+                  {editBatch === batch.id ? (
+                    <div style={{ flex: 1, marginRight: 8 }}>
+                      <input
+                        type="text" className="form-input" value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Batch name" style={{ marginBottom: 6, padding: '6px 10px', fontSize: '0.875rem' }}
+                      />
+                      <input
+                        type="text" className="form-input" value={editTiming}
+                        onChange={(e) => setEditTiming(e.target.value)}
+                        placeholder="Timing" style={{ padding: '6px 10px', fontSize: '0.875rem' }}
+                      />
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        <button className="btn btn-primary btn-sm" disabled={saving} onClick={() => saveEdit(batch.id)}>
+                          <HiOutlineCheck /> {saving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>
+                          <HiOutlineX /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <h4>{batch.name}</h4>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{batch.timing || 'No timing set'}</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn-icon btn-sm" style={{ color: 'var(--info)' }} onClick={() => startEdit(batch)} title="Edit batch">
+                          <HiOutlinePencil />
+                        </button>
+                        <button className={`btn-icon btn-sm`} style={{ color: isManaging ? 'var(--gray-500)' : 'var(--green-600)' }} onClick={() => openManage(batch.id)} title="Manage students">
+                          {isManaging ? <HiOutlineX /> : <HiOutlineUserAdd />}
+                        </button>
+                        <button className="btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(batch.id)} title="Delete batch">
+                          <HiOutlineTrash />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Current students */}

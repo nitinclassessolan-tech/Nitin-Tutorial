@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, where, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd, HiOutlinePencil, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
 
 export default function CourseForm() {
   const [courses, setCourses] = useState([]);
@@ -10,8 +10,12 @@ export default function CourseForm() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showEnroll, setShowEnroll] = useState(null); // courseId to enroll into
+  const [showEnroll, setShowEnroll] = useState(null);
   const [enrollStudentId, setEnrollStudentId] = useState('');
+  const [editCourse, setEditCourse] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -63,6 +67,36 @@ export default function CourseForm() {
       loadData();
     } catch (err) {
       toast.error('Failed to delete');
+    }
+  }
+
+  function startEdit(course) {
+    setEditCourse(course.id);
+    setEditName(course.name || '');
+    setEditDesc(course.description || '');
+  }
+
+  function cancelEdit() {
+    setEditCourse(null);
+    setEditName('');
+    setEditDesc('');
+  }
+
+  async function saveEdit(courseId) {
+    if (!editName.trim()) { toast.error('Course name required'); return; }
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'courses', courseId), {
+        name: editName.trim(),
+        description: editDesc.trim(),
+      });
+      toast.success('Course updated!');
+      setEditCourse(null);
+      loadData();
+    } catch (err) {
+      toast.error('Failed to update course');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -148,18 +182,46 @@ export default function CourseForm() {
             return (
               <div className="card" key={course.id} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div>
-                    <h4>{course.name}</h4>
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{course.description || '—'}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button className="btn-icon btn-sm" style={{ color: 'var(--green-600)' }} onClick={() => setShowEnroll(showEnroll === course.id ? null : course.id)} title="Enroll student">
-                      <HiOutlineUserAdd />
-                    </button>
-                    <button className="btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(course.id)} title="Delete">
-                      <HiOutlineTrash />
-                    </button>
-                  </div>
+                  {editCourse === course.id ? (
+                    <div style={{ flex: 1, marginRight: 8 }}>
+                      <input
+                        type="text" className="form-input" value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Course name" style={{ marginBottom: 6, padding: '6px 10px', fontSize: '0.875rem' }}
+                      />
+                      <textarea
+                        className="form-input" value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        placeholder="Description" rows={2} style={{ padding: '6px 10px', fontSize: '0.875rem' }}
+                      />
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        <button className="btn btn-primary btn-sm" disabled={saving} onClick={() => saveEdit(course.id)}>
+                          <HiOutlineCheck /> {saving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>
+                          <HiOutlineX /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <h4>{course.name}</h4>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{course.description || '—'}</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn-icon btn-sm" style={{ color: 'var(--info)' }} onClick={() => startEdit(course)} title="Edit course">
+                          <HiOutlinePencil />
+                        </button>
+                        <button className="btn-icon btn-sm" style={{ color: 'var(--green-600)' }} onClick={() => setShowEnroll(showEnroll === course.id ? null : course.id)} title="Enroll student">
+                          <HiOutlineUserAdd />
+                        </button>
+                        <button className="btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(course.id)} title="Delete">
+                          <HiOutlineTrash />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Enrolled students */}
