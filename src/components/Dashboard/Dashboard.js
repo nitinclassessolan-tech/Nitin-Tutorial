@@ -25,6 +25,7 @@ export default function Dashboard() {
     recentTests: [],
     batchInfo: [],
     courseNames: [],
+    upcomingFees: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +81,19 @@ export default function Dashboard() {
           )
         );
 
+        // Find fees due within 7 days or overdue
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcomingFees = feesSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((f) => {
+            if (!f.dueDate) return false;
+            const due = new Date(f.dueDate);
+            due.setHours(0, 0, 0, 0);
+            const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+            return diff <= 7; // due within 7 days or overdue
+          });
+
         const totalCourses = (userProfile?.courseIds || []).length;
 
         // Fetch batch info (name + timing)
@@ -115,6 +129,7 @@ export default function Dashboard() {
           recentTests,
           batchInfo,
           courseNames,
+          upcomingFees,
         });
       }
     } catch (err) {
@@ -189,6 +204,48 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Fee Due Warning */}
+      {!isTeacher && stats.upcomingFees.length > 0 && (
+        <div className="card" style={{
+          marginBottom: 16, borderLeft: '4px solid var(--danger)',
+          background: 'linear-gradient(135deg, #fef2f2, #fff)',
+          animation: 'fadeInUp 0.3s ease-out',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+            <h3 style={{ fontSize: '0.9375rem', color: 'var(--danger)', margin: 0 }}>Fee Payment Due</h3>
+          </div>
+          {stats.upcomingFees.map((fee) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(fee.dueDate);
+            due.setHours(0, 0, 0, 0);
+            const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+            let statusText, statusColor;
+            if (diff < 0) { statusText = `Overdue by ${Math.abs(diff)} day${Math.abs(diff) > 1 ? 's' : ''}`; statusColor = 'var(--danger)'; }
+            else if (diff === 0) { statusText = 'Due today!'; statusColor = 'var(--danger)'; }
+            else { statusText = `Due in ${diff} day${diff > 1 ? 's' : ''}`; statusColor = '#b45309'; }
+            return (
+              <div key={fee.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 10px', borderRadius: 'var(--radius-md)',
+                background: 'rgba(239,68,68,0.06)', marginBottom: 4,
+              }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{fee.month}</span>
+                  <span style={{ fontSize: '0.75rem', color: statusColor, marginLeft: 8, fontWeight: 600 }}>
+                    ⏰ {statusText}
+                  </span>
+                </div>
+                <span style={{ fontWeight: 700, color: 'var(--danger)', fontFamily: 'var(--font-heading)' }}>
+                  ₹{fee.amount || 0}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="stats-grid stagger-list">

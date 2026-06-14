@@ -1,20 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineChevronDown, HiOutlineChevronUp } from 'react-icons/hi';
-import { getInitials } from '../../utils/helpers';
+import {
+  HiOutlinePlus, HiOutlineCheckCircle, HiOutlineXCircle,
+  HiOutlineChevronDown, HiOutlineChevronUp, HiOutlinePencil,
+  HiOutlineTrash, HiOutlineCheck, HiOutlineX,
+} from 'react-icons/hi';
+import { getInitials, formatDate } from '../../utils/helpers';
 
 export default function FeeForm() {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [month, setMonth] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(true);
   const [fees, setFees] = useState([]);
   const [adding, setAdding] = useState(false);
   const [pendingByStudent, setPendingByStudent] = useState([]);
   const [showPending, setShowPending] = useState(true);
+  // Edit state
+  const [editFeeId, setEditFeeId] = useState(null);
+  const [editMonth, setEditMonth] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -33,7 +44,6 @@ export default function FeeForm() {
       const studentList = studentsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setStudents(studentList);
 
-      // Group pending fees by student
       const pendingFees = feesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       const grouped = {};
       pendingFees.forEach((fee) => {
@@ -58,10 +68,7 @@ export default function FeeForm() {
 
   async function loadStudentFees(studentId) {
     try {
-      const q = query(
-        collection(db, 'fees'),
-        where('studentId', '==', studentId)
-      );
+      const q = query(collection(db, 'fees'), where('studentId', '==', studentId));
       const snap = await getDocs(q);
       setFees(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
@@ -80,6 +87,7 @@ export default function FeeForm() {
       await addDoc(collection(db, 'fees'), {
         studentId: selectedStudent,
         month: month.trim(),
+        dueDate: dueDate || '',
         amount: Number(amount) || 0,
         paid: false,
         createdAt: serverTimestamp(),
@@ -87,9 +95,10 @@ export default function FeeForm() {
       });
       toast.success('Fee record added');
       setMonth('');
+      setDueDate('');
       setAmount('');
       loadStudentFees(selectedStudent);
-      loadInitialData(); // Refresh pending list
+      loadInitialData();
     } catch (err) {
       toast.error('Failed to add fee');
     } finally {
@@ -107,11 +116,72 @@ export default function FeeForm() {
       setFees((prev) =>
         prev.map((f) => (f.id === feeId ? { ...f, paid: !currentPaid } : f))
       );
-      // Refresh pending list
       loadInitialData();
     } catch (err) {
       toast.error('Failed to update');
     }
+  }
+
+  // --- Edit ---
+  function startEdit(fee) {
+    setEditFeeId(fee.id);
+    setEditMonth(fee.month || '');
+    setEditDueDate(fee.dueDate || '');
+    setEditAmount(String(fee.amount || ''));
+  }
+
+  function cancelEdit() {
+    setEditFeeId(null);
+    setEditMonth('');
+    setEditDueDate('');
+    setEditAmount('');
+  }
+
+  async function saveEdit(feeId) {
+    if (!editMonth.trim()) { toast.error('Month is required'); return; }
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'fees', feeId), {
+        month: editMonth.trim(),
+        dueDate: editDueDate || '',
+        amount: Number(editAmount) || 0,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Fee entry updated');
+      setEditFeeId(null);
+      loadStudentFees(selectedStudent);
+      loadInitialData();
+    } catch (err) {
+      toast.error('Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // --- Delete ---
+  async function handleDeleteFee(feeId) {
+    if (!window.confirm('Delete this fee entry?')) return;
+    try {
+      await deleteDoc(doc(db, 'fees', feeId));
+      toast.success('Fee entry deleted');
+      setFees((prev) => prev.filter((f) => f.id !== feeId));
+      loadInitialData();
+    } catch (err) {
+      toast.error('Failed to delete');
+    }
+  }
+
+  function getDueLabel(dueDateStr) {
+    if (!dueDateStr) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDateStr);
+    due.setHours(0, 0, 0, 0);
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    if (diff < 0) return { text: `Overdue by ${Math.abs(diff)} day${Math.abs(diff) > 1 ? 's' : ''}`, color: 'var(--danger)' };
+    if (diff === 0) return { text: 'Due today', color: 'var(--danger)' };
+    if (diff <= 7) return { text: `Due in ${diff} day${diff > 1 ? 's' : ''}`, color: '#b45309' };
+    return { text: `Due ${formatDate(dueDateStr)}`, color: 'var(--gray-500)' };
   }
 
   if (loading) {
@@ -128,15 +198,10 @@ export default function FeeForm() {
       {/* Pending Fees Summary */}
       {pendingByStudent.length > 0 && (
         <div className="card" style={{
-          marginBottom: 24,
-          borderLeft: '4px solid var(--danger)',
-          background: 'var(--white)',
+          marginBottom: 24, borderLeft: '4px solid var(--danger)', background: 'var(--white)',
         }}>
           <div
-            style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              cursor: 'pointer',
-            }}
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
             onClick={() => setShowPending(!showPending)}
           >
             <div>
@@ -226,10 +291,8 @@ export default function FeeForm() {
           <div className="form-group">
             <label className="form-label">Student</label>
             <select
-              className="form-input"
-              value={selectedStudent}
-              onChange={(e) => setSelectedStudent(e.target.value)}
-              id="fee-student"
+              className="form-input" value={selectedStudent}
+              onChange={(e) => setSelectedStudent(e.target.value)} id="fee-student"
             >
               <option value="">Select student</option>
               {students.map((s) => (
@@ -241,26 +304,24 @@ export default function FeeForm() {
             <div className="form-group">
               <label className="form-label">Month / Period</label>
               <input
-                type="text"
-                className="form-input"
-                placeholder="e.g., June 2026"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                id="fee-month"
+                type="text" className="form-input" placeholder="e.g., June 2026"
+                value={month} onChange={(e) => setMonth(e.target.value)} id="fee-month"
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Amount (₹)</label>
+              <label className="form-label">Due Date</label>
               <input
-                type="number"
-                className="form-input"
-                placeholder="e.g., 2000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="0"
-                id="fee-amount"
+                type="date" className="form-input"
+                value={dueDate} onChange={(e) => setDueDate(e.target.value)} id="fee-due-date"
               />
             </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Amount (₹)</label>
+            <input
+              type="number" className="form-input" placeholder="e.g., 2000"
+              value={amount} onChange={(e) => setAmount(e.target.value)} min="0" id="fee-amount"
+            />
           </div>
           <button type="submit" className="btn btn-primary" disabled={adding} id="fee-submit">
             <HiOutlinePlus /> {adding ? 'Adding...' : 'Add Fee Entry'}
@@ -280,27 +341,94 @@ export default function FeeForm() {
             </div>
           ) : (
             <div className="stagger-list">
-              {fees.map((fee) => (
-                <div className="list-card" key={fee.id} style={{
-                  borderLeft: `4px solid ${fee.paid ? 'var(--green-500)' : 'var(--danger)'}`,
-                }}>
-                  <div className="list-card-content">
-                    <h4>{fee.month}</h4>
-                    <p>₹{fee.amount || '—'}</p>
-                  </div>
-                  <button
-                    className={`btn btn-sm ${fee.paid ? 'btn-secondary' : 'btn-primary'}`}
-                    onClick={() => togglePaid(fee.id, fee.paid)}
-                    style={{ minWidth: 100 }}
-                  >
-                    {fee.paid ? (
-                      <><HiOutlineXCircle /> Unpaid</>
+              {fees.map((fee) => {
+                const dueLabel = !fee.paid ? getDueLabel(fee.dueDate) : null;
+                const isEditing = editFeeId === fee.id;
+
+                return (
+                  <div className="card" key={fee.id} style={{
+                    marginBottom: 8,
+                    borderLeft: `4px solid ${fee.paid ? 'var(--green-500)' : 'var(--danger)'}`,
+                  }}>
+                    {isEditing ? (
+                      /* Edit Mode */
+                      <div>
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Month</label>
+                            <input type="text" className="form-input" value={editMonth}
+                              onChange={(e) => setEditMonth(e.target.value)}
+                              style={{ padding: '6px 10px', fontSize: '0.875rem' }}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Due Date</label>
+                            <input type="date" className="form-input" value={editDueDate}
+                              onChange={(e) => setEditDueDate(e.target.value)}
+                              style={{ padding: '6px 10px', fontSize: '0.875rem' }}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>Amount (₹)</label>
+                          <input type="number" className="form-input" value={editAmount} min="0"
+                            onChange={(e) => setEditAmount(e.target.value)}
+                            style={{ padding: '6px 10px', fontSize: '0.875rem' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                          <button className="btn btn-primary btn-sm" disabled={saving} onClick={() => saveEdit(fee.id)}>
+                            <HiOutlineCheck /> {saving ? 'Saving...' : 'Save'}
+                          </button>
+                          <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>
+                            <HiOutlineX /> Cancel
+                          </button>
+                        </div>
+                      </div>
                     ) : (
-                      <><HiOutlineCheckCircle /> Mark Paid</>
+                      /* View Mode */
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ fontSize: '0.9375rem', marginBottom: 2 }}>{fee.month}</h4>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--gray-600)' }}>
+                            ₹{fee.amount || '—'}
+                          </p>
+                          {dueLabel && (
+                            <p style={{ fontSize: '0.75rem', color: dueLabel.color, fontWeight: 600, marginTop: 2 }}>
+                              ⏰ {dueLabel.text}
+                            </p>
+                          )}
+                          {fee.dueDate && fee.paid && (
+                            <p style={{ fontSize: '0.75rem', color: 'var(--gray-400)', marginTop: 2 }}>
+                              Due was {formatDate(fee.dueDate)}
+                            </p>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => togglePaid(fee.id, fee.paid)}
+                            style={{
+                              minWidth: 80,
+                              background: fee.paid ? 'var(--green-500)' : 'var(--danger)',
+                              color: 'var(--white)',
+                              border: 'none',
+                            }}
+                          >
+                            {fee.paid ? <><HiOutlineCheckCircle /> Paid</> : <><HiOutlineXCircle /> Unpaid</>}
+                          </button>
+                          <button className="btn-icon btn-sm" style={{ color: 'var(--info)' }} onClick={() => startEdit(fee)} title="Edit">
+                            <HiOutlinePencil />
+                          </button>
+                          <button className="btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteFee(fee.id)} title="Delete">
+                            <HiOutlineTrash />
+                          </button>
+                        </div>
+                      </div>
                     )}
-                  </button>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>

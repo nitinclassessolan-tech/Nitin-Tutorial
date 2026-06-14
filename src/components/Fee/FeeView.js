@@ -71,19 +71,35 @@ export default function FeeView() {
         </div>
       ) : (
         <div className="stagger-list">
-          {fees.map((fee) => (
-            <div className="list-card" key={fee.id} style={{
-              borderLeft: `4px solid ${fee.paid ? 'var(--green-500)' : 'var(--danger)'}`,
-            }}>
-              <div className="list-card-content">
-                <h4 style={{ fontSize: '0.9375rem' }}>{fee.month}</h4>
-                <p>₹{fee.amount || '—'}</p>
+          {fees.map((fee) => {
+            let dueLabel = null;
+            if (!fee.paid && fee.dueDate) {
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const due = new Date(fee.dueDate); due.setHours(0, 0, 0, 0);
+              const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+              if (diff < 0) dueLabel = { text: `Overdue by ${Math.abs(diff)} day${Math.abs(diff) > 1 ? 's' : ''}`, color: 'var(--danger)' };
+              else if (diff === 0) dueLabel = { text: 'Due today!', color: 'var(--danger)' };
+              else if (diff <= 7) dueLabel = { text: `Due in ${diff} day${diff > 1 ? 's' : ''}`, color: '#b45309' };
+            }
+            return (
+              <div className="list-card" key={fee.id} style={{
+                borderLeft: `4px solid ${fee.paid ? 'var(--green-500)' : 'var(--danger)'}`,
+              }}>
+                <div className="list-card-content">
+                  <h4 style={{ fontSize: '0.9375rem' }}>{fee.month}</h4>
+                  <p>₹{fee.amount || '—'}</p>
+                  {dueLabel && (
+                    <p style={{ fontSize: '0.75rem', color: dueLabel.color, fontWeight: 600, marginTop: 2 }}>
+                      ⏰ {dueLabel.text}
+                    </p>
+                  )}
+                </div>
+                <span className={`badge ${fee.paid ? 'badge-success' : 'badge-danger'}`}>
+                  {fee.paid ? '✓ PAID' : '✗ NOT PAID'}
+                </span>
               </div>
-              <span className={`badge ${fee.paid ? 'badge-success' : 'badge-danger'}`}>
-                {fee.paid ? '✓ PAID' : '✗ NOT PAID'}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
